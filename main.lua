@@ -1,79 +1,122 @@
--- HyperShot Projesi - Eğitsel Amaçlıdır
-local Library = {}
-local UserInputService = game:GetService("UserInputService")
-local RunService = game:GetService("RunService")
+-- HyperShot Framework v2.0
+-- GitHub: ttni131/ttnilua3
+-- Özellikler: Aimbot, ESP, Fly, Super Jump
+
 local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
 local LocalPlayer = Players.LocalPlayer
+local Mouse = LocalPlayer:GetMouse()
 local Camera = workspace.CurrentCamera
 
--- Menü Oluşturma
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "HyperShot_Menu"
-ScreenGui.Parent = game.CoreGui
+-- Ayarlar
+local Settings = {
+    Aimbot = false,
+    ESP = false,
+    Fly = false,
+    JumpPower = 50,
+    FlySpeed = 50
+}
 
-local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 250, 0, 300)
-MainFrame.Position = UDim2.new(0.5, -125, 0.5, -150)
-MainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15) -- Siyah
-MainFrame.BorderSizePixel = 2
-MainFrame.BorderColor3 = Color3.fromRGB(120, 0, 255) -- Mor Neon
-MainFrame.Active = true
-MainFrame.Draggable = true
-MainFrame.Parent = ScreenGui
+-- UI Tasarımı (Cyberpunk Tema)
+local ScreenGui = Instance.new("ScreenGui", game.CoreGui)
+local MainFrame = Instance.new("Frame", ScreenGui)
+MainFrame.Size = UDim2.new(0, 220, 0, 280)
+MainFrame.Position = UDim2.new(0.1, 0, 0.1, 0)
+MainFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
+MainFrame.BorderSizePixel = 0
 
-local Title = Instance.new("TextLabel")
+-- Kenarlık (Neon Mor)
+local UIStroke = Instance.new("UIStroke", MainFrame)
+UIStroke.Color = Color3.fromRGB(170, 0, 255)
+UIStroke.Thickness = 2
+
+local Title = Instance.new("TextLabel", MainFrame)
 Title.Size = UDim2.new(1, 0, 0, 40)
-Title.Text = "HYPERSHOT v1.0"
-Title.TextColor3 = Color3.fromRGB(0, 255, 150) -- Neon Yeşil
-Title.BackgroundTransparency = 1
+Title.Text = "HYPERSHOT LUA"
+Title.TextColor3 = Color3.fromRGB(0, 255, 180) -- Neon Yeşil
 Title.Font = Enum.Font.Code
-Title.TextSize = 20
-Title.Parent = MainFrame
+Title.BackgroundTransparency = 1
 
--- Fonksiyon Değişkenleri
-local Toggles = {Aimbot = false, ESP = false, Fly = false}
-
--- --- ÖZELLİKLER ---
-
--- 1. Fly & Jump Mantığı
-local function HandleMovement()
-    if Toggles.Fly then
-        LocalPlayer.Character.Humanoid:ChangeState(Enum.HumanoidStateType.Physics)
-        -- Basit bir BodyVelocity veya CFrame manipülasyonu eklenebilir
+-- Fonksiyonlar
+local function GetClosestPlayer()
+    local closest = nil
+    local dist = math.huge
+    for _, v in pairs(Players:GetPlayers()) do
+        if v ~= LocalPlayer and v.Character and v.Character:FindFirstChild("HumanoidRootPart") then
+            local pos, onScreen = Camera:WorldToViewportPoint(v.Character.HumanoidRootPart.Position)
+            if onScreen then
+                local mouseDist = (Vector2.new(pos.X, pos.Y) - Vector2.new(Mouse.X, Mouse.Y)).Magnitude
+                if mouseDist < dist then
+                    closest = v
+                    dist = mouseDist
+                end
+            end
+        end
     end
+    return closest
 end
 
--- 2. ESP (İsim Etiketleri)
-local function CreateESP(player)
-    local bgui = Instance.new("BillboardGui", player.Character:WaitForChild("Head"))
-    bgui.Size = UDim2.new(0, 200, 0, 50)
-    bgui.Adornee = player.Character.Head
-    bgui.AlwaysOnTop = true
+-- Ana Döngü (Aimbot & Fly)
+RunService.RenderStepped:Connect(function()
+    if Settings.Aimbot then
+        local target = GetClosestPlayer()
+        if target and UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2) then
+            Camera.CFrame = CFrame.new(Camera.CFrame.Position, target.Character.HumanoidRootPart.Position)
+        end
+    end
     
-    local nameTag = Instance.new("TextLabel", bgui)
-    nameTag.Size = UDim2.new(1, 0, 1, 0)
-    nameTag.BackgroundTransparency = 1
-    nameTag.TextColor3 = Color3.fromRGB(255, 0, 0)
-    nameTag.Text = player.Name
-end
+    if Settings.Fly and LocalPlayer.Character then
+        local root = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if root then
+            root.Velocity = Vector3.new(0, 0.1, 0) -- Yerçekimini nötrle
+        end
+    end
+end)
 
--- --- BUTONLAR ---
-local function CreateButton(name, pos, callback)
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0.8, 0, 0, 35)
-    btn.Position = UDim2.new(0.1, 0, 0, pos)
+-- Buton Oluşturucu
+local function AddButton(name, yPos, callback)
+    local btn = Instance.new("TextButton", MainFrame)
+    btn.Size = UDim2.new(0.9, 0, 0, 35)
+    btn.Position = UDim2.new(0.05, 0, 0, yPos)
+    btn.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
     btn.Text = name
-    btn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.TextColor3 = Color3.white
     btn.Font = Enum.Font.SourceSans
-    btn.Parent = MainFrame
+    btn.BorderSizePixel = 0
     
-    btn.MouseButton1Click:Connect(callback)
+    btn.MouseButton1Click:Connect(function()
+        callback(btn)
+    end)
 end
 
-CreateButton("Aimbot: OFF", 60, function() Toggles.Aimbot = not Toggles.Aimbot print("Aimbot durumu: "..tostring(Toggles.Aimbot)) end)
-CreateButton("ESP: OFF", 110, function() Toggles.ESP = not Toggles.ESP end)
-CreateButton("Fly: OFF", 160, function() Toggles.Fly = not Toggles.Fly end)
-CreateButton("Super Jump", 210, function() LocalPlayer.Character.Humanoid.JumpPower = 100 end)
+-- Butonları Tanımla
+AddButton("Aimbot: OFF", 50, function(b)
+    Settings.Aimbot = not Settings.Aimbot
+    b.Text = Settings.Aimbot and "Aimbot: ON" or "Aimbot: OFF"
+    b.TextColor3 = Settings.Aimbot and Color3.fromRGB(0, 255, 0) or Color3.white
+end)
 
-print("HyperShot başarıyla yüklendi!")
+AddButton("ESP: TOGGLE", 100, function()
+    -- Basit Highlight ESP
+    for _, p in pairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer and p.Character then
+            local h = p.Character:FindFirstChild("Highlight") or Instance.new("Highlight", p.Character)
+            h.FillColor = Color3.fromRGB(255, 0, 0)
+        end
+    end
+end)
+
+AddButton("Fly: OFF", 150, function(b)
+    Settings.Fly = not Settings.Fly
+    b.Text = Settings.Fly and "Fly: ON" or "Fly: OFF"
+end)
+
+AddButton("Super Jump", 200, function()
+    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+        LocalPlayer.Character.Humanoid.JumpPower = 120
+        LocalPlayer.Character.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+    end
+end)
+
+print("HyperShot Inject Edildi! GitHub: ttni131")
